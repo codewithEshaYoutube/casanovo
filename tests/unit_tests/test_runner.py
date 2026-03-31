@@ -104,17 +104,16 @@ def test_initialize_model(tmp_path, mgf_small):
         runner.initialize_model(train=False)
 
 
-def test_no_model(tiny_config_db, mgf_small, tiny_fasta_file):
-    """Test running a model with no weights"""
+def test_db_search_no_model_raises(tiny_config_db, mgf_small, tiny_fasta_file):
+    """DB search must require an explicit model file."""
     config = Config(tiny_config_db)
-    with ModelRunner(config=config) as runner:
-        results_path = "test.mztab"
-        with pytest.raises(
+    with (
+        ModelRunner(config=config) as runner,
+        pytest.raises(
             ValueError, match="A model file must be provided for DB search"
-        ):
-            runner.db_search(
-                (str(mgf_small),), str(tiny_fasta_file), str(results_path)
-            )
+        ),
+    ):
+        runner.db_search((str(mgf_small),), str(tiny_fasta_file), "test.mztab")
 
 
 def test_save_and_load_weights(tmp_path, mgf_small, tiny_config):
