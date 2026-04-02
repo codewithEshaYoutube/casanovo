@@ -5,6 +5,7 @@ import functools
 import hashlib
 import heapq
 import io
+import logging
 import os
 import pathlib
 import platform
@@ -1910,6 +1911,54 @@ def test_spectrum_id_mgf(mgf_small, tmp_path):
         ):
             assert dataset[i]["peak_file"][0] == filename.name
             assert dataset[i]["scan_id"][0] == f"index={scan_id}"
+
+
+def test_log_training_set_size(mgf_small, tmp_path, caplog):
+    """Test that the number of training and validation spectra is logged."""
+    mgf_small2 = tmp_path / "mgf_small2.mgf"
+    shutil.copy(mgf_small, mgf_small2)
+    data_module = DeNovoDataModule(
+        lance_dir=tmp_path.name,
+        train_paths=[mgf_small, mgf_small2],
+        valid_paths=[mgf_small],
+        min_peaks=0,
+        shuffle=False,
+    )
+    with caplog.at_level(logging.INFO, logger="casanovo"):
+        data_module.setup()
+
+    assert any(
+        msg == "Training dataset contains 4 spectra."
+        for msg in caplog.messages
+    )
+    assert any(
+        msg == "Validation dataset contains 2 spectra."
+        for msg in caplog.messages
+    )
+
+
+def test_log_training_set_size_shuffled(mgf_small, tmp_path, caplog):
+    """Test spectra count logging when shuffle=True (ShufflerIterDataPipe)."""
+    mgf_small2 = tmp_path / "mgf_small2.mgf"
+    shutil.copy(mgf_small, mgf_small2)
+    data_module = DeNovoDataModule(
+        lance_dir=tmp_path.name,
+        train_paths=[mgf_small, mgf_small2],
+        valid_paths=[mgf_small],
+        min_peaks=0,
+        shuffle=True,
+    )
+    with caplog.at_level(logging.INFO, logger="casanovo"):
+        data_module.setup()
+
+    assert any(
+        msg == "Training dataset contains 4 spectra."
+        for msg in caplog.messages
+    )
+    assert any(
+        msg == "Validation dataset contains 2 spectra."
+        for msg in caplog.messages
+    )
 
 
 def test_spectrum_id_mzml(mzml_small, tmp_path):
