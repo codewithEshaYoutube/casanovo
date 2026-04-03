@@ -47,6 +47,10 @@ click.rich_click.USE_MARKDOWN = True
 click.rich_click.STYLE_HELPTEXT = ""
 click.rich_click.SHOW_ARGUMENTS = True
 
+# How long (in seconds) a cached URL-based weights file is considered fresh
+# before a remote HEAD request is made to check for updates. Default: 24 hours.
+CACHE_TTL_SECONDS = 86400
+
 
 class _SharedFileIOParams(click.RichCommand):
     """File IO options shared between most Casanovo commands"""
@@ -694,8 +698,23 @@ def _get_weights_from_url(
     cache_file_path = cache_file_dir / cache_file_name
 
     if cache_file_path.is_file() and not force_download:
-        cache_time = cache_file_path.stat()
-        url_last_modified = 0
+        cache_age = time.time() - cache_file_path.stat().st_mtime
+
+        # If the cached file is recent enough, skip the network call entirely.
+        if cache_age < CACHE_TTL_SECONDS:
+            logger.info(
+                "Model weights %s retrieved from local cache (fresh within "
+                "%ds TTL)",
+                file_url,
+                CACHE_TTL_SECONDS,
+            )
+            return cache_file_path
+
+        # Cache is stale — check remote last-modified time.
+        # Use float('inf') as fallback so that on any network failure we
+        # conservatively keep the cached file rather than re-downloading.
+        cache_mtime = cache_file_path.stat().st_mtime
+        url_last_modified = float("inf")
 
         try:
             file_response = requests.head(file_url)
@@ -722,7 +741,7 @@ def _get_weights_from_url(
                 file_url,
             )
 
-        if cache_time.st_mtime > url_last_modified:
+        if cache_mtime > url_last_modified:
             logger.info(
                 "Model weights %s retrieved from local cache", file_url
             )
