@@ -698,8 +698,8 @@ def _get_weights_from_url(
     cache_file_path = cache_file_dir / cache_file_name
 
     if cache_file_path.is_file() and not force_download:
-        cache_age = time.time() - cache_file_path.stat().st_mtime
-
+        cache_mtime = cache_file_path.stat().st_mtime
+        cache_age = max(0.0, time.time() - cache_mtime)
         # If the cached file is recent enough, skip the network call entirely.
         if cache_age < CACHE_TTL_SECONDS:
             logger.info(
@@ -713,7 +713,7 @@ def _get_weights_from_url(
         # Cache is stale — check remote last-modified time.
         # Use float('-inf') as fallback so that on any network failure we
         # conservatively keep the cached file rather than re-downloading.
-        cache_mtime = cache_file_path.stat().st_mtime
+        
         url_last_modified = float("-inf")
 
         try:
@@ -806,3 +806,5 @@ def _is_valid_url(file_url: str) -> bool:
 
 if __name__ == "__main__":
     main()
+
+
