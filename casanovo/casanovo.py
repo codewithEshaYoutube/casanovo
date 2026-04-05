@@ -714,7 +714,7 @@ def _get_weights_from_url(
         # Use float('inf') as fallback so that on any network failure we
         # conservatively keep the cached file rather than re-downloading.
         cache_mtime = cache_file_path.stat().st_mtime
-        url_last_modified = float("inf")
+        url_last_modified = float("-inf")
 
         try:
             file_response = requests.head(file_url)
