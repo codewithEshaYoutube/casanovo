@@ -10,9 +10,12 @@ import shutil
 import sys
 import time
 import urllib.parse
+import email.utils
 import warnings
 from pathlib import Path
 from typing import Optional, Tuple
+# How long (in seconds) a cached URL-based weights file is considered fresh
+CACHE_TTL_SECONDS = 86400
 
 warnings.formatwarning = lambda message, category, *args, **kwargs: (
     f"{category.__name__}: {message}"
@@ -694,17 +697,27 @@ def _get_weights_from_url(
     cache_file_path = cache_file_dir / cache_file_name
 
     if cache_file_path.is_file() and not force_download:
-        cache_time = cache_file_path.stat()
-        url_last_modified = 0
+        cache_mtime = cache_file_path.stat().st_mtime
+        cache_age = max(0.0, time.time() - cache_mtime)
+        if cache_age < CACHE_TTL_SECONDS:
+            logger.info(
+                "Model weights %s retrieved from local cache (fresh within "
+                "%ds TTL)",
+                file_url,
+                CACHE_TTL_SECONDS,
+            )
+            return cache_file_path
+
+        url_last_modified = time.time()
 
         try:
-            file_response = requests.head(file_url)
+            file_response = requests.head(file_url, timeout=10)
             if file_response.ok:
                 if "Last-Modified" in file_response.headers:
-                    url_last_modified = datetime.datetime.strptime(
-                        file_response.headers["Last-Modified"],
-                        "%a, %d %b %Y %H:%M:%S %Z",
+                    url_last_modified = email.utils.parsedate_to_datetime(
+                        file_response.headers["Last-Modified"]
                     ).timestamp()
+                    
             else:
                 logger.warning(
                     "Attempted HEAD request to %s yielded non-ok status code—"
@@ -722,7 +735,7 @@ def _get_weights_from_url(
                 file_url,
             )
 
-        if cache_time.st_mtime > url_last_modified:
+        if cache_mtime > url_last_modified:
             logger.info(
                 "Model weights %s retrieved from local cache", file_url
             )
