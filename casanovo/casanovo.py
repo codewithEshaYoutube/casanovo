@@ -710,20 +710,21 @@ def _get_weights_from_url(
             )
             return cache_file_path
 
-        # Cache is stale — check remote last-modified time.
-        # Use float('-inf') as fallback so that on any network failure we
-        # conservatively keep the cached file rather than re-downloading.
-        
-        url_last_modified = float("-inf")
+        url_last_modified = time.time()
 
         try:
             file_response = requests.head(file_url)
             if file_response.ok:
                 if "Last-Modified" in file_response.headers:
-                    url_last_modified = datetime.datetime.strptime(
-                        file_response.headers["Last-Modified"],
-                        "%a, %d %b %Y %H:%M:%S %Z",
-                    ).timestamp()
+                    try:
+                        url_last_modified = datetime.datetime.strptime(
+                            file_response.headers["Last-Modified"],
+                            "%a, %d %b %Y %H:%M:%S %Z",
+                        ).timestamp()
+                    except ValueError:
+                        url_last_modified = time.time()
+                else:
+                    url_last_modified = time.time()
             else:
                 logger.warning(
                     "Attempted HEAD request to %s yielded non-ok status code—"
