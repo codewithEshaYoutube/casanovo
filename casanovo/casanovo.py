@@ -47,10 +47,6 @@ click.rich_click.USE_MARKDOWN = True
 click.rich_click.STYLE_HELPTEXT = ""
 click.rich_click.SHOW_ARGUMENTS = True
 
-# How long (in seconds) a cached URL-based weights file is considered fresh
-# before a remote HEAD request is made to check for updates. Default: 24 hours.
-CACHE_TTL_SECONDS = 86400
-
 
 class _SharedFileIOParams(click.RichCommand):
     """File IO options shared between most Casanovo commands"""
@@ -698,33 +694,17 @@ def _get_weights_from_url(
     cache_file_path = cache_file_dir / cache_file_name
 
     if cache_file_path.is_file() and not force_download:
-        cache_mtime = cache_file_path.stat().st_mtime
-        cache_age = max(0.0, time.time() - cache_mtime)
-        # If the cached file is recent enough, skip the network call entirely.
-        if cache_age < CACHE_TTL_SECONDS:
-            logger.info(
-                "Model weights %s retrieved from local cache (fresh within "
-                "%ds TTL)",
-                file_url,
-                CACHE_TTL_SECONDS,
-            )
-            return cache_file_path
-
-        url_last_modified = time.time()
+        cache_time = cache_file_path.stat()
+        url_last_modified = 0
 
         try:
             file_response = requests.head(file_url)
             if file_response.ok:
                 if "Last-Modified" in file_response.headers:
-                    try:
-                        url_last_modified = datetime.datetime.strptime(
-                            file_response.headers["Last-Modified"],
-                            "%a, %d %b %Y %H:%M:%S %Z",
-                        ).timestamp()
-                    except ValueError:
-                        url_last_modified = time.time()
-                else:
-                    url_last_modified = time.time()
+                    url_last_modified = datetime.datetime.strptime(
+                        file_response.headers["Last-Modified"],
+                        "%a, %d %b %Y %H:%M:%S %Z",
+                    ).timestamp()
             else:
                 logger.warning(
                     "Attempted HEAD request to %s yielded non-ok status code—"
@@ -742,7 +722,7 @@ def _get_weights_from_url(
                 file_url,
             )
 
-        if cache_mtime > url_last_modified:
+        if cache_time.st_mtime > url_last_modified:
             logger.info(
                 "Model weights %s retrieved from local cache", file_url
             )
@@ -807,5 +787,3 @@ def _is_valid_url(file_url: str) -> bool:
 
 if __name__ == "__main__":
     main()
-
-
