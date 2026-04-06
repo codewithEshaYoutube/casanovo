@@ -9,6 +9,7 @@ import pytest
 import requests
 
 from casanovo import casanovo
+from casanovo.casanovo import CACHE_TTL_SECONDS
 
 
 def test_get_weights_from_url_fresh_cache(monkeypatch):
@@ -30,8 +31,8 @@ def test_get_weights_from_url_fresh_cache(monkeypatch):
         cache_file = cache_file_dir / "model_weights.ckpt"
         cache_file.write_bytes(b"fake weights")
 
-        # Set mtime to 1 minute ago (fresh, within TTL)
-        recent_time = time.time() - 60
+        # Set mtime to half the TTL ago (fresh, within TTL)
+        recent_time = time.time() - (CACHE_TTL_SECONDS / 2)
         os.utime(cache_file, (recent_time, recent_time))
 
         result = casanovo._get_weights_from_url(file_url, cache_dir)
