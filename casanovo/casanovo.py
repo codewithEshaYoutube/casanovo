@@ -708,16 +708,20 @@ def _get_weights_from_url(
             )
             return cache_file_path
 
-        url_last_modified = time.time()
+        url_last_modified = float("-inf")
 
         try:
             file_response = requests.head(file_url, timeout=10)
             if file_response.ok:
                 if "Last-Modified" in file_response.headers:
-                    url_last_modified = email.utils.parsedate_to_datetime(
-                        file_response.headers["Last-Modified"]
-                    ).timestamp()
-                    
+                    try:
+                        url_last_modified = email.utils.parsedate_to_datetime(
+                            file_response.headers["Last-Modified"]
+                        ).timestamp()
+                    except (TypeError, ValueError):
+                        url_last_modified = time.time()
+                else:
+                    url_last_modified = time.time()
             else:
                 logger.warning(
                     "Attempted HEAD request to %s yielded non-ok status code—"
@@ -734,7 +738,6 @@ def _get_weights_from_url(
                 "cached file",
                 file_url,
             )
-
         if cache_mtime > url_last_modified:
             logger.info(
                 "Model weights %s retrieved from local cache", file_url
@@ -763,7 +766,7 @@ def _download_weights(file_url: str, download_path: Path) -> None:
     """
     download_file_dir = download_path.parent
     os.makedirs(download_file_dir, exist_ok=True)
-    response = requests.get(file_url, stream=True, allow_redirects=True)
+    response = requests.get(file_url, stream=True, allow_redirects=True, timeout=60)
     response.raise_for_status()
     file_size = int(response.headers.get("Content-Length", 0))
     desc = "(Unknown total file size)" if file_size == 0 else ""
