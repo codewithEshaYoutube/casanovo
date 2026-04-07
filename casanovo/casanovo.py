@@ -796,7 +796,7 @@ def _get_weights_from_url(
                             file_response.headers["Last-Modified"]
                         ).timestamp()
                     except (TypeError, ValueError):
-                        # Preserve cached copy when server provides an unparseable dateo
+                        # Preserve cached copy when server provides an unparseable date
                         url_last_modified = float("-inf")
                 else:
                     # Preserve cached copy when server provides no Last-Modified header
