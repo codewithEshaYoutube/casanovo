@@ -795,9 +795,11 @@ def _get_weights_from_url(
                             file_response.headers["Last-Modified"]
                         ).timestamp()
                     except (TypeError, ValueError):
-                        url_last_modified = time.time()
+                        # Preserve cached copy when server provides an unparseable dateo
+                        url_last_modified = float("-inf")
                 else:
-                    url_last_modified = time.time()
+                    # Preserve cached copy when server provides no Last-Modified header
+                    url_last_modified = float("-inf")
             else:
                 logger.warning(
                     "Attempted HEAD request to %s yielded non-ok status code—"
