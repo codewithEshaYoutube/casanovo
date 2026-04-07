@@ -20,6 +20,7 @@ CACHE_TTL_SECONDS = 86400
 warnings.formatwarning = lambda message, category, *args, **kwargs: (
     f"{category.__name__}: {message}"
 )
+
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings(
     "ignore",
