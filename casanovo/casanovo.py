@@ -788,7 +788,7 @@ def _get_weights_from_url(
         url_last_modified = float("-inf")
 
         try:
-            file_response = requests.head(file_url, timeout=10)
+            file_response = requests.head(file_url, allow_redirects=True, timeout=10)
             if file_response.ok:
                 if "Last-Modified" in file_response.headers:
                     try:
